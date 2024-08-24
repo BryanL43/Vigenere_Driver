@@ -1,6 +1,4 @@
-#include <iostream>
-#include <Windows.h>
-#include <TlHelp32.h>
+#include "../headers/driver.h"
 
 static DWORD getPID(const wchar_t* processName) {
 	DWORD pid = 0;
@@ -59,66 +57,6 @@ static std::uintptr_t getModuleBase(const DWORD pid, const wchar_t* moduleName) 
 	CloseHandle(snapShot);
 
 	return moduleBase;
-}
-
-namespace driver {
-	namespace codes { // Holds the ioctl codes
-		// Used to setup the driver
-		constexpr ULONG attach =
-			CTL_CODE(FILE_DEVICE_UNKNOWN, 0x696, METHOD_BUFFERED, FILE_SPECIAL_ACCESS);
-
-		// Read process memory
-		constexpr ULONG read =
-			CTL_CODE(FILE_DEVICE_UNKNOWN, 0x697, METHOD_BUFFERED, FILE_SPECIAL_ACCESS);
-
-		// Write process memory
-		constexpr ULONG write =
-			CTL_CODE(FILE_DEVICE_UNKNOWN, 0x698, METHOD_BUFFERED, FILE_SPECIAL_ACCESS);
-	}
-
-	// Share between user mode & kernal mode
-	struct Request {
-		HANDLE pid;
-		PVOID target;
-		PVOID buffer;
-
-		SIZE_T size;
-		SIZE_T returnSize;
-	};
-
-	bool attachToProcess(HANDLE driverHandle, const DWORD pid) {
-		Request r;
-		r.pid = reinterpret_cast<HANDLE>(pid);
-
-		return DeviceIoControl(driverHandle, codes::attach, &r, sizeof(r),
-			&r, sizeof(r), nullptr, nullptr);
-	}
-
-	template<class T>
-	T readMemory(HANDLE driverHandle, const std::uintptr_t address) {
-		T temp = {};
-
-		Request r;
-		r.target = reinterpret_cast<PVOID>(address);
-		r.buffer = &temp;
-		r.size = sizeof(T);
-
-		DeviceIoControl(driverHandle, codes::read, &r, sizeof(r),
-			&r, sizeof(r), nullptr, nullptr);
-
-		return temp;
-	}
-
-	template<class T>
-	void writeMemory(HANDLE driverHandle, const std::uintptr_t address, const T& value) {
-		Request r;
-		r.target = reinterpret_cast<PVOID>(address);
-		r.buffer = (PVOID) &value;
-		r.size = sizeof(T);
-
-		DeviceIoControl(driverHandle, codes::write, &r, sizeof(r),
-			&r, sizeof(r), nullptr, nullptr);
-	}
 }
 
 int main() {

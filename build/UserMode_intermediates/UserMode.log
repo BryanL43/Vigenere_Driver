@@ -1,3 +1,5 @@
-﻿  main.cpp
-C:\Users\bryan\source\repos\Vigenere_Driver\UserMode\src\main.cpp(91,11): warning C4312: 'reinterpret_cast': conversion from 'const DWORD' to 'HANDLE' of greater size
+﻿  driver.cpp
+C:\Users\bryan\source\repos\Vigenere_Driver\UserMode\src\driver.cpp(6,11): warning C4312: 'reinterpret_cast': conversion from 'const DWORD' to 'HANDLE' of greater size
+  main.cpp
+  Generating Code...
   UserMode.vcxproj -> C:\Users\bryan\source\repos\Vigenere_Driver\build\UserMode.exe

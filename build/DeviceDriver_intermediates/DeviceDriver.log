@@ -1,11 +1,7 @@
 ﻿  Building 'DeviceDriver' with toolset 'WindowsKernelModeDriver10.0' and the 'Universal' target platform.
   Stamping C:\Users\bryan\source\repos\Vigenere_Driver\build\DeviceDriver_intermediates\DeviceDriver.inf
-  Stamping [Version] section with DriverVer=08/24/2024,2.19.27.113
-  main.cpp
+  Stamping [Version] section with DriverVer=08/24/2024,11.12.2.401
   DeviceDriver.vcxproj -> C:\Users\bryan\source\repos\Vigenere_Driver\build\DeviceDriver.sys
-  Done Adding Additional Store
-  Successfully signed: C:\Users\bryan\source\repos\Vigenere_Driver\build\DeviceDriver.sys
-  
   Driver is 'Universal'.
   .........................
   Signability test complete.
