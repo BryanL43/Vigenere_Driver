@@ -6,6 +6,8 @@
 #include <ntddk.h>
 #include <wdm.h>
 
+#define BUFFER_SIZE 512
+
 extern "C" {
 	// Ensure our IOCTL driver is compatible with kdmapper
 	NTKERNELAPI NTSTATUS IoCreateDriver(PUNICODE_STRING DriverName,
@@ -28,7 +30,7 @@ namespace driver {
 	// Data structure shared between user mode & kernal mode
 	struct Request {
 		int cipher; // Encrypt: 1; Decrypt: 0.
-		char message[512];
+		char message[BUFFER_SIZE];
 	};
 
 	// File operation signatures

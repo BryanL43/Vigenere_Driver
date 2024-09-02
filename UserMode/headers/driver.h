@@ -4,6 +4,8 @@
 #include <iostream>
 #include <Windows.h>
 
+#define BUFFER_SIZE 512
+
 namespace driver {
 	namespace codes { // Holds the ioctl codes
 		// Encrypt data
@@ -18,7 +20,7 @@ namespace driver {
 	// Data structure shared between user mode & kernal mode
 	struct Request {
 		int cipher; // Encrypt: 1; Decrypt: 0.
-		char message[512];
+		char message[BUFFER_SIZE];
 	};
 }
 

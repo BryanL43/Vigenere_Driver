@@ -59,6 +59,7 @@ NTSTATUS driver::create(PDEVICE_OBJECT deviceObj, PIRP irp) {
     // Store the Request structure pointer in the device extension
     deviceObj->DeviceExtension = deviceExtension;
 
+    // Set the IRP's I/O status
     irp->IoStatus.Status = STATUS_SUCCESS;
     irp->IoStatus.Information = 0;
     IoCompleteRequest(irp, IO_NO_INCREMENT);
@@ -75,12 +76,11 @@ NTSTATUS driver::create(PDEVICE_OBJECT deviceObj, PIRP irp) {
 * @return NTSTATUS: STATUS_SUCCESS on success.
 */
 NTSTATUS driver::close(PDEVICE_OBJECT deviceObj, PIRP irp) {
-    // Free the memory allocated for the Request structure
-    if (deviceObj->DeviceExtension != NULL) {
-        ExFreePoolWithTag(deviceObj->DeviceExtension, 'ReqS');
-        deviceObj->DeviceExtension = NULL;
-    }
+    // Free the memory allocated for the Request data structure
+    ExFreePoolWithTag(deviceObj->DeviceExtension, 'ReqS');
+    deviceObj->DeviceExtension = NULL;
 
+    // Set the IRP's I/O status
     irp->IoStatus.Status = STATUS_SUCCESS;
     irp->IoStatus.Information = 0;
     IoCompleteRequest(irp, IO_NO_INCREMENT);
