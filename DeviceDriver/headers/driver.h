@@ -31,6 +31,7 @@ namespace driver {
 	struct Request {
 		int cipher; // Encrypt: 1; Decrypt: 0.
 		char message[BUFFER_SIZE];
+		char key[BUFFER_SIZE];
 	};
 
 	// File operation signatures

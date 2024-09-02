@@ -88,7 +88,7 @@ NTSTATUS driver::close(PDEVICE_OBJECT deviceObj, PIRP irp) {
 }
 
 /*
-* Sets the cipher job based on user specified command.
+* Sets the key and cipher job based on user specified command.
 *
 * @param deviceObj: The device object associated with the current driver.
                     This parameter is automatically provided by the I/O manager.
@@ -108,6 +108,15 @@ NTSTATUS driver::device_control(PDEVICE_OBJECT deviceObj, PIRP irp) {
         return STATUS_INVALID_PARAMETER;
     }
 
+    // Validate the SystemBuffer pointer
+    if (irp->AssociatedIrp.SystemBuffer == nullptr) {
+        debugPrint("[-] SystemBuffer is NULL!\n");
+        irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+        irp->IoStatus.Information = 0;
+        IoCompleteRequest(irp, IO_NO_INCREMENT);
+        return STATUS_INVALID_PARAMETER;
+    }
+
 	// Acquire our data structure
     auto request = reinterpret_cast<driver::Request*>(deviceObj->DeviceExtension);
 	if (request == nullptr) {
@@ -117,6 +126,17 @@ NTSTATUS driver::device_control(PDEVICE_OBJECT deviceObj, PIRP irp) {
 		IoCompleteRequest(irp, IO_NO_INCREMENT);
 		return STATUS_INVALID_PARAMETER;
 	}
+
+    // Retrieve the length of the key buffer
+    ULONG length = stack_irp->Parameters.DeviceIoControl.InputBufferLength;
+
+    // Check if the length is within bounds
+    if (length > sizeof(request->key)) {
+        length = sizeof(request->key);
+    }
+
+    // Copy the key data from the SystemBuffer into the data structure
+    RtlCopyMemory(request->key, irp->AssociatedIrp.SystemBuffer, length);
 
 	// Set the operation to encryption or decryption based on given command
 	const ULONG controlCode = stack_irp->Parameters.DeviceIoControl.IoControlCode;
@@ -189,7 +209,7 @@ NTSTATUS driver::write(PDEVICE_OBJECT deviceObj, PIRP irp) {
         length = sizeof(request->message);
     }
 
-    // Copy the data from the SystemBuffer into the data structure
+    // Copy the message data from the SystemBuffer into the data structure
     RtlCopyMemory(request->message, irp->AssociatedIrp.SystemBuffer, length);
 
     // Set the IRP's I/O status
