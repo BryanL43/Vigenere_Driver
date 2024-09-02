@@ -17,6 +17,7 @@ int main() {
     char message[] = "Zmwwm, uq zsup tq Jjksv Wpc. Q Ducm pintgpavr xw kgyhcepp.";
     char key[] = "sillyism";
 
+    // Write the message to the device driver
     DWORD bytesWritten;
     if (!WriteFile(driver, message, sizeof(message) - 1, &bytesWritten, NULL)) {
         std::cerr << "Failed to write to the driver! Error: " << GetLastError() << std::endl;
@@ -24,6 +25,7 @@ int main() {
         std::cout << "Bytes written: " << bytesWritten << "\n";
     }
 
+    // Set the encryption/decryption operation & assign the key
     DWORD bytesReturned;
     BOOL result = DeviceIoControl(driver, driver::codes::decrypt, key, sizeof(key),
         nullptr, 0, &bytesReturned, nullptr);
@@ -33,15 +35,14 @@ int main() {
         return -1;
     }
 
+    // Reads the device driver's response
     char readBuffer[sizeof(message)];
     DWORD bytesRead = 0;
-
-    // Read the response from the driver
     if (!ReadFile(driver, readBuffer, sizeof(readBuffer), &bytesRead, NULL)) {
         std::cerr << "Failed to read from the driver! Error: " << GetLastError() << std::endl;
     } else {
         std::cout << "Bytes read: " << bytesRead << "\n";
-        std::cout << "Read message: " << readBuffer << "\n";
+        std::cout << "Result: " << readBuffer << "\n";
     }
 
     CloseHandle(driver);
