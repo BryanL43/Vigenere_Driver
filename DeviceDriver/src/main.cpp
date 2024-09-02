@@ -7,10 +7,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObj, PUNICODE_STRING registryPath) {
 	UNICODE_STRING driverName = {}; // char* but Window's C++ version
 	RtlInitUnicodeString(&driverName, L"\\Device\\Vigenere_Driver");
 
+	// Create the Device Driver
 	PDEVICE_OBJECT deviceObj = nullptr;
 	NTSTATUS status = IoCreateDevice(driverObj, 0, &driverName, FILE_DEVICE_UNKNOWN,
 		FILE_DEVICE_SECURE_OPEN, FALSE, &deviceObj);
-
 	if (status != STATUS_SUCCESS) {
 		debugPrint("[-] Failed to create device driver!\n");
 		return status;
@@ -21,6 +21,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObj, PUNICODE_STRING registryPath) {
 	UNICODE_STRING symbolicLink = {};
 	RtlInitUnicodeString(&symbolicLink, L"\\DosDevices\\Vigenere_Driver");
 
+	// Create the Symbolic link
 	status = IoCreateSymbolicLink(&symbolicLink, &driverName);
 	if (status != STATUS_SUCCESS) {
 		debugPrint("[-] Failed to establish symbolic link!\n");
@@ -39,6 +40,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObj, PUNICODE_STRING registryPath) {
 	driverObj->MajorFunction[IRP_MJ_WRITE] = driver::write;
 	driverObj->MajorFunction[IRP_MJ_READ] = driver::read;
 
+	// Unload the device driver is not compatible with KdMapper
 	driverObj->DriverUnload = driver::unload;
 
 	ClearFlag(deviceObj->Flags, DO_DEVICE_INITIALIZING);
@@ -48,13 +50,15 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObj, PUNICODE_STRING registryPath) {
 	return status;
 }
 
-// Eliminated for OSRLoader
-// KdMapper will call this "entry point" but params will be null.
-//NTSTATUS DriverEntry() {
-//	debugPrint("[+] Redirecting driver entry point!\n");
-//
-//	UNICODE_STRING driverName = {}; // char* but Window device driver's C++ version
-//	RtlInitUnicodeString(&driverName, L"\\Driver\\Vigenere_Driver");
-//
-//	return IoCreateDriver(&driverName, &driverMain);
-//}
+// KdMapper will call this "entry point" but params will be null. Turned off for OSR loader.
+/*
+NTSTATUS DriverEntry() {
+	debugPrint("[+] Redirecting driver entry point!\n");
+
+	UNICODE_STRING driverName = {}; // char* but Window device driver's C++ version
+	RtlInitUnicodeString(&driverName, L"\\Driver\\Vigenere_Driver");
+
+	// Ensure to switch the above function to "driverMain" for KdMapper
+	return IoCreateDriver(&driverName, &driverMain);
+}
+*/

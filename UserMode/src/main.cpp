@@ -14,7 +14,6 @@ int main() {
         return -1;
     }
 
-    // Use a char array for the message
     char message[] = "Hello, my name is Bryan Lee. I Like exploding my computer.";
 
     DWORD bytesWritten;
@@ -33,7 +32,7 @@ int main() {
         return -1;
     }
 
-    char readBuffer[sizeof(message)] = { 0 }; // Adjust size if needed
+    char readBuffer[sizeof(message)] = { 0 };
     DWORD bytesRead = 0;
 
     // Read the response from the driver
@@ -41,7 +40,7 @@ int main() {
         std::cerr << "Failed to read from the driver! Error: " << GetLastError() << std::endl;
     } else {
         std::cout << "Bytes read: " << bytesRead << "\n";
-        std::cout << "Read message: " << readBuffer << "\n"; // Display the read message
+        std::cout << "Read message: " << readBuffer << "\n";
     }
 
     CloseHandle(driver);

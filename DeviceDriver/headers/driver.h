@@ -25,13 +25,10 @@ namespace driver {
 			CTL_CODE(FILE_DEVICE_UNKNOWN, 0x697, METHOD_BUFFERED, FILE_SPECIAL_ACCESS);
 	}
 
-	// Structure shared between user mode & kernal mode
+	// Data structure shared between user mode & kernal mode
 	struct Request {
 		int cipher; // Encrypt: 1; Decrypt: 0.
 		char message[512];
-
-		SIZE_T size;
-		SIZE_T returnSize;
 	};
 
 	// File operation signatures

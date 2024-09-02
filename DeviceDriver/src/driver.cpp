@@ -94,21 +94,28 @@ NTSTATUS driver::close(PDEVICE_OBJECT deviceObj, PIRP irp) {
                     This parameter is automatically provided by the I/O manager.
 * @param irp: The I/O request packet representing the device_control request.
               This parameter is automatically provided by the I/O manager.
-* @return NTSTATUS: STATUS_SUCCESS on success, STATUS_UNSUCCESSFUL on failure.
+* @return NTSTATUS: STATUS_SUCCESS on success, or STATUS_INVALID_PARAMETER on invalid stack/request,
+*                   or STATUS_INVALID_DEVICE_REQUEST on invalid driver code.
 */
 NTSTATUS driver::device_control(PDEVICE_OBJECT deviceObj, PIRP irp) {
-	UNREFERENCED_PARAMETER(deviceObj);
-
-	debugPrint("[+] Device control called!\n");
-
-	// Determines which code is passed through (holds ioctl codes)
+    // Acquire the stack I/O request packet which holds the ioctl codes
 	PIO_STACK_LOCATION stack_irp = IoGetCurrentIrpStackLocation(irp);
+    if (stack_irp == nullptr) {
+        debugPrint("[-] Invalid IRP stack location!\n");
+        irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+        irp->IoStatus.Information = 0;
+        IoCompleteRequest(irp, IO_NO_INCREMENT);
+        return STATUS_INVALID_PARAMETER;
+    }
 
-	// Access the request object sent from user mode
+	// Acquire our data structure
     auto request = reinterpret_cast<driver::Request*>(deviceObj->DeviceExtension);
-	if (stack_irp == nullptr || request == nullptr) {
+	if (request == nullptr) {
+        debugPrint("[-] Failed to acquire our data structure!\n");
+        irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+        irp->IoStatus.Information = 0;
 		IoCompleteRequest(irp, IO_NO_INCREMENT);
-		return STATUS_UNSUCCESSFUL;
+		return STATUS_INVALID_PARAMETER;
 	}
 
 	// Set the operation to encryption or decryption based on given command
@@ -122,28 +129,41 @@ NTSTATUS driver::device_control(PDEVICE_OBJECT deviceObj, PIRP irp) {
 			break;
 	default:
 		debugPrint("[-] Invalid driver code!\n");
-		break;
+        irp->IoStatus.Status = STATUS_INVALID_DEVICE_REQUEST;
+        irp->IoStatus.Information = 0;
+        IoCompleteRequest(irp, IO_NO_INCREMENT);
+        return STATUS_INVALID_DEVICE_REQUEST;
 	}
 
-
+    // Set the IRP's I/O status
 	irp->IoStatus.Status = STATUS_SUCCESS;
 	irp->IoStatus.Information = sizeof(driver::Request);
-
 	IoCompleteRequest(irp, IO_NO_INCREMENT);
-
 	return STATUS_SUCCESS;
 }
 
+/*
+* Writes the user's message to our data structure.
+*
+* @param deviceObj: The device object associated with the current driver.
+                    This parameter is automatically provided by the I/O manager.
+* @param irp: The I/O request packet representing the write request.
+              This parameter is automatically provided by the I/O manager.
+* @return NTSTATUS: STATUS_SUCCESS on success, or STATUS_INVALID_PARAMETER on invalid stack/request.
+*/
 NTSTATUS driver::write(PDEVICE_OBJECT deviceObj, PIRP irp) {
-    UNREFERENCED_PARAMETER(deviceObj);
-
-    debugPrint("[+] Write v1.14\n");
-
+    // Acquire the stack I/O request packet which holds the ioctl codes
     PIO_STACK_LOCATION stack_irp = IoGetCurrentIrpStackLocation(irp);
-    ULONG length = stack_irp->Parameters.Write.Length;
+    if (stack_irp == nullptr) {
+        debugPrint("[-] Invalid IRP stack location!\n");
+        irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+        irp->IoStatus.Information = 0;
+        IoCompleteRequest(irp, IO_NO_INCREMENT);
+        return STATUS_INVALID_PARAMETER;
+    }
 
     // Validate the SystemBuffer pointer
-    if (irp->AssociatedIrp.SystemBuffer == NULL) {
+    if (irp->AssociatedIrp.SystemBuffer == nullptr) {
         debugPrint("[-] SystemBuffer is NULL!\n");
         irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         irp->IoStatus.Information = 0;
@@ -151,86 +171,80 @@ NTSTATUS driver::write(PDEVICE_OBJECT deviceObj, PIRP irp) {
         return STATUS_INVALID_PARAMETER;
     }
 
-    // Retrieve the Request structure from the device extension
+    // Acquire our data structure
     auto request = reinterpret_cast<driver::Request*>(deviceObj->DeviceExtension);
-
-    if (request == NULL) {
-        debugPrint("[-] Device extension is NULL!\n");
-        irp->IoStatus.Status = STATUS_UNSUCCESSFUL;
+    if (request == nullptr) {
+        debugPrint("[-] Failed to acquire our data structure!\n");
+        irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         irp->IoStatus.Information = 0;
-        IoCompleteRequest(irp, IO_NO_INCREMENT);
-        return STATUS_UNSUCCESSFUL;
+		IoCompleteRequest(irp, IO_NO_INCREMENT);
+		return STATUS_INVALID_PARAMETER;
     }
+
+    // Retrieve the length of the write operation
+    ULONG length = stack_irp->Parameters.Write.Length;
 
     // Check if the length is within bounds
     if (length > sizeof(request->message)) {
         length = sizeof(request->message);
     }
 
-    // Copy the data from the SystemBuffer into the Request structure
+    // Copy the data from the SystemBuffer into the data structure
     RtlCopyMemory(request->message, irp->AssociatedIrp.SystemBuffer, length);
-    request->size = length;
-    request->message[length] = '\0'; // Ensure null termination
-
-    debugPrint("[+] Fired step 1\n");
-
-    // Debug print the copied message
-    debugPrint("[+] Copied message: ");
-    debugPrint(request->message);
-    debugPrint("\n");
 
     // Set the IRP's I/O status
     irp->IoStatus.Status = STATUS_SUCCESS;
     irp->IoStatus.Information = length;
-
-    // Complete the IRP
     IoCompleteRequest(irp, IO_NO_INCREMENT);
     return STATUS_SUCCESS;
 }
 
-
+/*
+* Reads the encrypted/decrypted message from our data structure back to user.
+*
+* @param deviceObj: The device object associated with the current driver.
+                    This parameter is automatically provided by the I/O manager.
+* @param irp: The I/O request packet representing the read request.
+              This parameter is automatically provided by the I/O manager.
+* @return NTSTATUS: STATUS_SUCCESS on success, or STATUS_INVALID_PARAMETER on invalid stack/request.
+*/
 NTSTATUS driver::read(PDEVICE_OBJECT deviceObj, PIRP irp) {
-    UNREFERENCED_PARAMETER(deviceObj);
-
-    debugPrint("[+] Read v1.02\n");
-
+    // Acquire the stack I/O request packet which holds the ioctl codes
     PIO_STACK_LOCATION stack_irp = IoGetCurrentIrpStackLocation(irp);
-
-    // Validate the SystemBuffer pointer
-    if (irp->AssociatedIrp.SystemBuffer == NULL) {
-        debugPrint("[-] SystemBuffer is NULL!\n");
+    if (stack_irp == nullptr) {
+        debugPrint("[-] Invalid IRP stack location!\n");
         irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         irp->IoStatus.Information = 0;
         IoCompleteRequest(irp, IO_NO_INCREMENT);
         return STATUS_INVALID_PARAMETER;
     }
 
-    auto request = reinterpret_cast<driver::Request*>(deviceObj->DeviceExtension);
-
-    if (request == NULL) {
-        debugPrint("[-] Device extension is NULL!\n");
-        irp->IoStatus.Status = STATUS_UNSUCCESSFUL;
+    // Validate the SystemBuffer pointer
+    if (irp->AssociatedIrp.SystemBuffer == nullptr) {
+        debugPrint("[-] SystemBuffer is NULL!\n");
+        irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         irp->IoStatus.Information = 0;
         IoCompleteRequest(irp, IO_NO_INCREMENT);
-        return STATUS_UNSUCCESSFUL;
+        return STATUS_INVALID_PARAMETER;
     }
     
-    if (request->cipher == 1) {
-        debugPrint("[+] Read encrypt should be fired!\n");
+    // Acquire our data structure
+    auto request = reinterpret_cast<driver::Request*>(deviceObj->DeviceExtension);
+    if (request == nullptr) {
+        debugPrint("[-] Failed to acquire our data structure!\n");
+        irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+        irp->IoStatus.Information = 0;
+        IoCompleteRequest(irp, IO_NO_INCREMENT);
+        return STATUS_INVALID_PARAMETER;
     }
 
-    // Debug print the message
-    debugPrint("[+] Read message: ");
-    debugPrint(request->message);
-    debugPrint("\n");
-
+    // Retrieve the length of the read operation
     ULONG messageLength = stack_irp->Parameters.Read.Length;
 
-    // Ensure the length doesn't exceed the message size
+    // Check if the length is within bounds
     if (messageLength > sizeof(request->message)) {
-        messageLength = sizeof(request->message) - 1;
+        messageLength = sizeof(request->message);
     }
-    request->message[messageLength] = '\0';
 
     // Copy the message to the SystemBuffer
     RtlCopyMemory(irp->AssociatedIrp.SystemBuffer, request->message, messageLength);
@@ -238,8 +252,6 @@ NTSTATUS driver::read(PDEVICE_OBJECT deviceObj, PIRP irp) {
     // Set the IRP's I/O status
     irp->IoStatus.Status = STATUS_SUCCESS;
     irp->IoStatus.Information = messageLength;
-
-    // Complete the IRP
     IoCompleteRequest(irp, IO_NO_INCREMENT);
     return STATUS_SUCCESS;
 }
