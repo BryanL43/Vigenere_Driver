@@ -1,86 +1,51 @@
+#include <windows.h>
+#include <iostream>
+#include <string>
+
 #include "../headers/driver.h"
 
-static DWORD getPID(const wchar_t* processName) {
-	DWORD pid = 0;
-
-	HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
-	if (snapShot == INVALID_HANDLE_VALUE) {
-		return pid;
-	}
-
-	PROCESSENTRY32W entry = {};
-	entry.dwSize = sizeof(decltype(entry));
-
-	if (Process32FirstW(snapShot, &entry) == TRUE) {
-		// Check if the 1st handle is the one we want
-		if (_wcsicmp(processName, entry.szExeFile) == 0) {
-			pid = entry.th32ProcessID;
-		} else {
-			while (Process32NextW(snapShot, &entry) == TRUE) {
-				if (_wcsicmp(processName, entry.szExeFile) == 0) {
-					pid = entry.th32ProcessID;
-					break;
-				}
-			}
-		}
-	}
-
-	CloseHandle(snapShot);
-
-	return pid;
-}
-
-static std::uintptr_t getModuleBase(const DWORD pid, const wchar_t* moduleName) {
-	std::uintptr_t moduleBase = 0;
-
-	HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
-	if (snapShot == INVALID_HANDLE_VALUE) {
-		return pid;
-	}
-
-	MODULEENTRY32W entry = {};
-	entry.dwSize = sizeof(decltype(entry));
-
-	if (Module32FirstW(snapShot, &entry) == TRUE) {
-		if (wcsstr(moduleName, entry.szModule) != nullptr) {
-			moduleBase = reinterpret_cast<std::uintptr_t>(entry.modBaseAddr);
-		} else {
-			while (Module32NextW(snapShot, &entry) == TRUE) {
-				if (wcsstr(moduleName, entry.szModule) != nullptr) {
-					moduleBase = reinterpret_cast<std::uintptr_t>(entry.modBaseAddr);
-					break;
-				}
-			}
-		}
-	}
-
-	CloseHandle(snapShot);
-
-	return moduleBase;
-}
-
 int main() {
-	const DWORD pid = getPID(L"notepad.exe");
-	if (pid == 0) {
-		std::cout << "failed to find notepad!\n";
-		std::cin.get();
-		return 1;
-	}
+    // Open a handle to the driver
+    const HANDLE driver = CreateFile(L"\\\\.\\Vigenere_Driver", GENERIC_WRITE | GENERIC_READ, 0,
+        nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (driver == INVALID_HANDLE_VALUE) {
+        std::cerr << "Failed to create our driver handle! Error: " << GetLastError() << std::endl;
+        std::cin.get();
+        return -1;
+    }
 
-	const HANDLE driver = CreateFile(L"\\\\.\\Vigenere_Driver", GENERIC_READ, 0, nullptr, 
-		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-	if (driver == INVALID_HANDLE_VALUE) {
-		std::cout << "Failed to create our driver handle!\n";
-		std::cin.get();
-		return 1;
-	}
+    // Use a char array for the message
+    char message[] = "Hello, my name is Bryan Lee. I Like exploding my computer.";
 
-	if (driver::attachToProcess(driver, pid) == true) {
-		std::cout << "Attachment successful!\n";
-	}
+    DWORD bytesWritten;
+    if (!WriteFile(driver, message, sizeof(message) - 1, &bytesWritten, NULL)) {
+        std::cerr << "Failed to write to the driver! Error: " << GetLastError() << std::endl;
+    } else {
+        std::cout << "Bytes written: " << bytesWritten << "\n";
+    }
 
-	CloseHandle(driver); // Prevent handle from being leaked to driver
-	std::cin.get();
+    DWORD bytesReturned;
+    BOOL result = DeviceIoControl(driver, driver::codes::encrypt, nullptr, 0,
+        nullptr, 0, &bytesReturned, nullptr);
+    if (!result) {
+        std::cerr << "DeviceIoControl failed. Error: " << GetLastError() << std::endl;
+        CloseHandle(driver);
+        return -1;
+    }
 
-	return 0;
+    char readBuffer[sizeof(message)] = { 0 }; // Adjust size if needed
+    DWORD bytesRead = 0;
+
+    // Read the response from the driver
+    if (!ReadFile(driver, readBuffer, sizeof(readBuffer), &bytesRead, NULL)) {
+        std::cerr << "Failed to read from the driver! Error: " << GetLastError() << std::endl;
+    } else {
+        std::cout << "Bytes read: " << bytesRead << "\n";
+        std::cout << "Read message: " << readBuffer << "\n"; // Display the read message
+    }
+
+    CloseHandle(driver);
+
+    std::cin.get();
+    return 0;
 }

@@ -1,7 +1,7 @@
 #include "../headers/driver.h"
 
 // Our "real" entry point
-NTSTATUS driverMain(PDRIVER_OBJECT driverObj, PUNICODE_STRING registryPath) {
+NTSTATUS DriverEntry(PDRIVER_OBJECT driverObj, PUNICODE_STRING registryPath) {
 	UNREFERENCED_PARAMETER(registryPath); // Turn off registry path. Not referenced.
 
 	UNICODE_STRING driverName = {}; // char* but Window's C++ version
@@ -36,6 +36,10 @@ NTSTATUS driverMain(PDRIVER_OBJECT driverObj, PUNICODE_STRING registryPath) {
 	driverObj->MajorFunction[IRP_MJ_CREATE] = driver::create;
 	driverObj->MajorFunction[IRP_MJ_CLOSE] = driver::close;
 	driverObj->MajorFunction[IRP_MJ_DEVICE_CONTROL] = driver::device_control;
+	driverObj->MajorFunction[IRP_MJ_WRITE] = driver::write;
+	driverObj->MajorFunction[IRP_MJ_READ] = driver::read;
+
+	driverObj->DriverUnload = driver::unload;
 
 	ClearFlag(deviceObj->Flags, DO_DEVICE_INITIALIZING);
 
@@ -44,12 +48,13 @@ NTSTATUS driverMain(PDRIVER_OBJECT driverObj, PUNICODE_STRING registryPath) {
 	return status;
 }
 
+// Eliminated for OSRLoader
 // KdMapper will call this "entry point" but params will be null.
-NTSTATUS DriverEntry() {
-	debugPrint("[+] Redirecting driver entry point!\n");
-
-	UNICODE_STRING driverName = {}; // char* but Window's C++ version
-	RtlInitUnicodeString(&driverName, L"\\Driver\\Vigenere_Driver");
-
-	return IoCreateDriver(&driverName, &driverMain);
-}
+//NTSTATUS DriverEntry() {
+//	debugPrint("[+] Redirecting driver entry point!\n");
+//
+//	UNICODE_STRING driverName = {}; // char* but Window device driver's C++ version
+//	RtlInitUnicodeString(&driverName, L"\\Driver\\Vigenere_Driver");
+//
+//	return IoCreateDriver(&driverName, &driverMain);
+//}
