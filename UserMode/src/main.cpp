@@ -10,43 +10,64 @@ int main() {
         nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (driver == INVALID_HANDLE_VALUE) {
         std::cerr << "Failed to create our driver handle! Error: " << GetLastError() << std::endl;
-        std::cin.get();
         return -1;
     }
 
-    char message[] = "Zmwwm, uq zsup tq Jjksv Wpc. Q Ducm pintgpavr xw kgyhcepp.";
-    char key[] = "sillyism";
+    std::string message;
+    std::string key;
+    int cipherChoice;
 
-    // Write the message to the device driver
-    DWORD bytesWritten;
-    if (!WriteFile(driver, message, sizeof(message) - 1, &bytesWritten, NULL)) {
-        std::cerr << "Failed to write to the driver! Error: " << GetLastError() << std::endl;
-    } else {
-        std::cout << "Bytes written: " << bytesWritten << "\n";
-    }
+    while (true) {
+        // Get the user's message
+        std::cout << "Enter the message (or type 'exit' to quit): ";
+        std::getline(std::cin, message);
 
-    // Set the encryption/decryption operation & assign the key
-    DWORD bytesReturned;
-    BOOL result = DeviceIoControl(driver, driver::codes::decrypt, key, sizeof(key),
-        nullptr, 0, &bytesReturned, nullptr);
-    if (!result) {
-        std::cerr << "DeviceIoControl failed. Error: " << GetLastError() << std::endl;
-        CloseHandle(driver);
-        return -1;
-    }
+        // Exit the loop if the user types "exit"
+        if (message == "exit") {
+            break;
+        }
 
-    // Reads the device driver's response
-    char readBuffer[sizeof(message)];
-    DWORD bytesRead = 0;
-    if (!ReadFile(driver, readBuffer, sizeof(readBuffer), &bytesRead, NULL)) {
-        std::cerr << "Failed to read from the driver! Error: " << GetLastError() << std::endl;
-    } else {
-        std::cout << "Bytes read: " << bytesRead << "\n";
+        // Get the user's key
+        std::cout << "Enter the key: ";
+        std::getline(std::cin, key);
+
+        // Get the cipher choice from the user
+        std::cout << "Enter cipher mode (1 for encrypt, 0 for decrypt): ";
+        std::cin >> cipherChoice;
+        std::cin.ignore(); // Ignore new-line character
+
+        // Write the message to the device driver
+        DWORD bytesWritten;
+        if (!WriteFile(driver, message.c_str(), message.size(), &bytesWritten, NULL)) {
+            std::cerr << "Failed to write to the driver! Error: " << GetLastError() << std::endl;
+            CloseHandle(driver);
+            return -1;
+        }
+
+        // Set the encryption/decryption operation & assign the key
+        DWORD bytesReturned;
+        BOOL result = DeviceIoControl(driver,
+            cipherChoice == 1 ? driver::codes::encrypt : driver::codes::decrypt,
+            (LPVOID) key.c_str(), sizeof(key), nullptr, 0, &bytesReturned, nullptr);
+        if (!result) {
+            std::cerr << "DeviceIoControl failed. Error: " << GetLastError() << std::endl;
+            CloseHandle(driver);
+            return -1;
+        }
+
+        // Read the device driver's response
+        char readBuffer[sizeof(message)];
+        DWORD bytesRead = 0;
+        if (!ReadFile(driver, readBuffer, sizeof(readBuffer) - 1, &bytesRead, NULL)) {
+            std::cerr << "Failed to read from the driver! Error: " << GetLastError() << std::endl;
+            CloseHandle(driver);
+            return -1;
+        }
+
+        // Output the result
         std::cout << "Result: " << readBuffer << "\n";
     }
 
     CloseHandle(driver);
-
-    std::cin.get();
     return 0;
 }
