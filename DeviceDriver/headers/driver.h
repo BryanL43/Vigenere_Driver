@@ -1,7 +1,8 @@
 #ifndef DRIVER_H
 #define DRIVER_H
 
-#include <ntifs.h>
+#include "../headers/cipher.h"
+
 #include <ntstrsafe.h>
 #include <ntddk.h>
 #include <wdm.h>
@@ -13,8 +14,6 @@ extern "C" {
 	NTKERNELAPI NTSTATUS IoCreateDriver(PUNICODE_STRING DriverName,
 		PDRIVER_INITIALIZE InitializationFunction);;
 }
-
-void debugPrint(PCSTR text); // Signature declaration for driver namespace
 
 namespace driver {
 	namespace codes { // Holds the ioctl codes

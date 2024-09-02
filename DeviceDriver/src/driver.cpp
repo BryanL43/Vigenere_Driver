@@ -1,19 +1,6 @@
 #include "../headers/driver.h"
 
 /*
-* Prints to WinDbg.
-* 
-* @param text the const char* message.
-*/
-void debugPrint(PCSTR text) {
-#ifndef DEBUG
-	UNREFERENCED_PARAMETER(text);
-#endif // Debug
-
-	KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, text));
-}
-
-/*
 * Remove the device from the system. Ideally through OSR Driver Loader.
 * 
 * @param DriverObject: The driver object associated with the current device.
@@ -256,6 +243,34 @@ NTSTATUS driver::read(PDEVICE_OBJECT deviceObj, PIRP irp) {
         irp->IoStatus.Information = 0;
         IoCompleteRequest(irp, IO_NO_INCREMENT);
         return STATUS_INVALID_PARAMETER;
+    }
+    
+    // Execute the encrypt/decrypt operation
+    switch (request->cipher) {
+        case 1: // Encrypt
+            if (encrypt(request->message, request->key) != STATUS_SUCCESS) {
+                debugPrint("[-] Failed to encrypt message!\n");
+                irp->IoStatus.Status = STATUS_UNSUCCESSFUL;
+                irp->IoStatus.Information = 0;
+                IoCompleteRequest(irp, IO_NO_INCREMENT);
+                return STATUS_UNSUCCESSFUL;
+            }
+            break;
+        case 0: // Decrypt
+            if (decrypt(request->message, request->key) != STATUS_SUCCESS) {
+                debugPrint("[-] Failed to encrypt message!\n");
+                irp->IoStatus.Status = STATUS_UNSUCCESSFUL;
+                irp->IoStatus.Information = 0;
+                IoCompleteRequest(irp, IO_NO_INCREMENT);
+                return STATUS_UNSUCCESSFUL;
+            }
+            break;
+        default:
+            debugPrint("[-] Fatal: Invalid cipher operation during read!\n");
+            irp->IoStatus.Status = STATUS_UNSUCCESSFUL;
+            irp->IoStatus.Information = 0;
+            IoCompleteRequest(irp, IO_NO_INCREMENT);
+            return STATUS_UNSUCCESSFUL;
     }
 
     // Retrieve the length of the read operation

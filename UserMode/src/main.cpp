@@ -14,7 +14,7 @@ int main() {
         return -1;
     }
 
-    char message[] = "Hello, my name is Bryan Lee. I Like exploding my computer.";
+    char message[] = "Zmwwm, uq zsup tq Jjksv Wpc. Q Ducm pintgpavr xw kgyhcepp.";
     char key[] = "sillyism";
 
     DWORD bytesWritten;
@@ -25,7 +25,7 @@ int main() {
     }
 
     DWORD bytesReturned;
-    BOOL result = DeviceIoControl(driver, driver::codes::encrypt, key, sizeof(key),
+    BOOL result = DeviceIoControl(driver, driver::codes::decrypt, key, sizeof(key),
         nullptr, 0, &bytesReturned, nullptr);
     if (!result) {
         std::cerr << "DeviceIoControl failed. Error: " << GetLastError() << std::endl;
